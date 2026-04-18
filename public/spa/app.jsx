@@ -1,7 +1,31 @@
 const { useEffect, useMemo, useState } = React;
 
+function getCrmBase() {
+  if (typeof window === "undefined") return "";
+  const b = window.__CRM_BASE__;
+  if (b === undefined || b === null) return "";
+  return String(b).replace(/\/$/, "");
+}
+
+function appRouteFromLocation() {
+  let p = window.location.pathname || "/";
+  const base = getCrmBase();
+  if (base && p.startsWith(base)) {
+    p = p.slice(base.length) || "/";
+  }
+  if (!p.startsWith("/")) p = "/" + p;
+  return p;
+}
+
+function href(route) {
+  const base = getCrmBase();
+  const r = route.startsWith("/") ? route : "/" + route;
+  return (base + r) || r;
+}
+
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
+  const url = path.startsWith("http") ? path : href(path.startsWith("/") ? path : "/" + path);
+  const res = await fetch(url, {
     method: opts.method || "GET",
     headers: opts.body ? { "Content-Type": "application/json" } : undefined,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -33,13 +57,19 @@ function relDate(input) {
 }
 
 function App() {
-  const [path, setPath] = useState(window.location.pathname || "/dashboard");
+  const [path, setPath] = useState(() => {
+    const r = appRouteFromLocation();
+    return r === "/" ? "/dashboard" : r;
+  });
   const [me, setMe] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const onPop = () => setPath(window.location.pathname || "/dashboard");
+    const onPop = () => {
+      const r = appRouteFromLocation();
+      setPath(r === "/" ? "/dashboard" : r);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -52,8 +82,9 @@ function App() {
   }, []);
 
   const go = (to) => {
-    window.history.pushState({}, "", to);
-    setPath(to);
+    const route = to === "/" ? "/dashboard" : to;
+    window.history.pushState({}, "", href(route));
+    setPath(route);
   };
 
   const onLogin = (user) => {
@@ -83,9 +114,9 @@ function App() {
       <header className="topbar">
         <div className="brand">Notiphy CRM</div>
         <nav className="topnav">
-          <a href="/dashboard" className="topnav-link" onClick={(e) => { e.preventDefault(); go("/dashboard"); }}>Dashboard</a>
-          <a href="/prospects" className="topnav-link" onClick={(e) => { e.preventDefault(); go("/prospects"); }}>Prospects</a>
-          <a href="/notifications" className="topnav-link" onClick={(e) => { e.preventDefault(); go("/notifications"); }}>Notifications</a>
+          <a href={href("/dashboard")} className="topnav-link" onClick={(e) => { e.preventDefault(); go("/dashboard"); }}>Dashboard</a>
+          <a href={href("/prospects")} className="topnav-link" onClick={(e) => { e.preventDefault(); go("/prospects"); }}>Prospects</a>
+          <a href={href("/notifications")} className="topnav-link" onClick={(e) => { e.preventDefault(); go("/notifications"); }}>Notifications</a>
           <button className="topnav-link btn-link" onClick={logout} type="button">Logout</button>
         </nav>
       </header>
@@ -233,7 +264,7 @@ function ProspectsPage({ go }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.customer_id}>
-                <td><a href={`/prospects/${r.customer_id}`} onClick={(e) => { e.preventDefault(); go(`/prospects/${r.customer_id}`); }}>{r.customer_company || "(no company)"}</a></td>
+                <td><a href={href(`/prospects/${r.customer_id}`)} onClick={(e) => { e.preventDefault(); go(`/prospects/${r.customer_id}`); }}>{r.customer_company || "(no company)"}</a></td>
                 <td>{r.customer_name || ""}</td>
                 <td>{r.salesperson_name || ""}</td>
                 <td>{r.products_name || ""}</td>
@@ -270,7 +301,7 @@ function ProspectDetailPage({ id, go }) {
   const c = detail.customer || {};
   return (
     <>
-      <div className="muted"><a href="/prospects" onClick={(e) => { e.preventDefault(); go("/prospects"); }}>← Back to prospects</a></div>
+      <div className="muted"><a href={href("/prospects")} onClick={(e) => { e.preventDefault(); go("/prospects"); }}>← Back to prospects</a></div>
       <div className="card">
         <h2>{c.customer_company || "(no company)"}</h2>
         <div className="muted">{c.customer_name || ""} | {c.products_name || ""}</div>
