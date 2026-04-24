@@ -198,12 +198,39 @@ function DashboardPage() {
 
 function ProspectsPage({ go }) {
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
   const [lookups, setLookups] = useState({ salespeople: [], products: [], statuses: [], stages: [] });
   const [filters, setFilters] = useState({ search: "", salesperson: 0, product: 0, status: 0, stage: 0, sort: "date", limit: 50, offset: 0 });
   const [report, setReport] = useState({ totals: {}, graphs: {} });
   const [showCreate, setShowCreate] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [showColumns, setShowColumns] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    company: true,
+    name: true,
+    country: true,
+    site: true,
+    salesperson: true,
+    product: true,
+    progress: true,
+    date_added: true,
+    estimate: true,
+    quote: true,
+    last_event: true,
+    status: true,
+    industry: true,
+    application: true,
+    probability: false,
+    expected: false,
+    email: false,
+    phone: false,
+    sale: false,
+    customer: false,
+    source: false,
+    cell_phone: false,
+    web_site: false,
+  });
   const [newProspect, setNewProspect] = useState({
     customer_company: "",
     customer_name: "",
@@ -224,6 +251,7 @@ function ProspectsPage({ go }) {
     }, {})).toString();
     const [p, r] = await Promise.all([api(`/api/prospects?${q}`), api(`/api/prospects/report?${q}`)]);
     setRows(p.prospects || []);
+    setTotal(Number(p.total || 0));
     setReport(r || { totals: {}, graphs: {} });
   };
 
@@ -233,6 +261,59 @@ function ProspectsPage({ go }) {
   useEffect(() => { load(); }, []); // initial
 
   const t = report.totals || {};
+  const columnDefs = [
+    { key: "company", label: "Company", description: "Company name", color: "c-blue" },
+    { key: "name", label: "Name", description: "Name of the prospect to contact", color: "c-blue" },
+    { key: "country", label: "Country", description: "Country of origin for the prospect", color: "c-lime" },
+    { key: "salesperson", label: "Salesperson", description: "Salesperson dealing with this prospect", color: "c-pink" },
+    { key: "site", label: "Site", description: "Website the prospect came from", color: "c-yellow" },
+    { key: "product", label: "Product", description: "Product the prospect is interested in", color: "c-orange" },
+    { key: "progress", label: "Progress", description: "Progress stage the prospect is at", color: "c-green" },
+    { key: "estimate", label: "Estimate", description: "Estimated value of prospect", color: "c-khaki" },
+    { key: "quote", label: "Quote", description: "Value of last quote sent out", color: "c-sky" },
+    { key: "date_added", label: "Date Added", description: "Date the prospect was contacted", color: "c-lemon" },
+    { key: "last_event", label: "Last Event", description: "Date of the last event with the prospect", color: "c-purple" },
+    { key: "industry", label: "Industry", description: "Industry the prospect is in", color: "c-teal" },
+    { key: "application", label: "Application", description: "Application the prospect uses", color: "c-red" },
+    { key: "probability", label: "Probability", description: "Probability of converting to a sale", color: "c-brown" },
+    { key: "expected", label: "Expected", description: "Expected sale date", color: "c-purple" },
+    { key: "email", label: "Email", description: "Prospect email address", color: "c-olive" },
+    { key: "phone", label: "Phone", description: "Prospect phone number", color: "c-violet" },
+    { key: "status", label: "Status", description: "Prospect status - win, lose or open", color: "c-green" },
+    { key: "sale", label: "Sale", description: "Value of prospect sale", color: "c-maroon" },
+    { key: "customer", label: "Customer", description: "Is the prospect a previous customer", color: "c-purple" },
+    { key: "source", label: "Source", description: "Where did the prospect find you", color: "c-teal" },
+    { key: "cell_phone", label: "Cell Phone", description: "Prospect cell phone number", color: "c-green" },
+    { key: "web_site", label: "Web Site", description: "Prospect web site address", color: "c-maroon" },
+  ];
+  const activeCols = columnDefs.filter((c) => visibleColumns[c.key]);
+  const toggleColumn = (key) => setVisibleColumns((s) => ({ ...s, [key]: !s[key] }));
+  const cellFor = (r, key) => {
+    if (key === "company") return <a href={href(`/prospects/${r.customer_id}`)} onClick={(e) => { e.preventDefault(); go(`/prospects/${r.customer_id}`); }}>{r.customer_company || "(no company)"}</a>;
+    if (key === "name") return r.customer_name || "";
+    if (key === "country") return r.countries_name || "";
+    if (key === "site") return r.site_label || "";
+    if (key === "salesperson") return r.salesperson_name || "";
+    if (key === "product") return r.products_name || "";
+    if (key === "progress") return <div className="progress"><div style={{ width: `${r.progress_percent || 0}%`, background: r.progress_color || "#e6d443" }} /></div>;
+    if (key === "date_added") return <span className="time-chip">{r.date_added_time || relDate(r.customer_date)}</span>;
+    if (key === "estimate") return r.customer_estimate_display || "";
+    if (key === "quote") return r.customer_quote_display || "";
+    if (key === "last_event") return <span className="event-chip">{r.last_event_time || ""}</span>;
+    if (key === "status") return <span className="status-pill-lite">{r.status_label || "Open"}</span>;
+    if (key === "industry") return r.industries_name || "";
+    if (key === "application") return r.application_name || "";
+    if (key === "probability") return r.probability_name || "";
+    if (key === "expected") return r.customer_sale_date ? relDate(r.customer_sale_date) : "";
+    if (key === "email") return r.customer_email || "";
+    if (key === "phone") return r.customer_phone || "";
+    if (key === "sale") return Number(r.customer_sale || 0) > 0 ? money(r.customer_sale) : "";
+    if (key === "customer") return Number(r.customer_existing || 0) === 1 ? "Yes" : "No";
+    if (key === "source") return r.referral_type || "";
+    if (key === "cell_phone") return r.customer_cell || "";
+    if (key === "web_site") return r.customer_web || "";
+    return "";
+  };
 
   const createProspect = async () => {
     setCreateBusy(true);
@@ -322,29 +403,53 @@ function ProspectsPage({ go }) {
       </div>
 
       <div className="card">
-        <h2>Prospect List</h2>
+        <div className="list-head">
+          <h2 style={{ marginBottom: 0 }}>Prospect List <span className="results-count">{total} Results</span></h2>
+          <div className="list-actions">
+            <button type="button" className="table-action" onClick={() => setShowColumns(true)}>Edit Columns</button>
+            <button type="button" className="table-action">Filters</button>
+            <button type="button" className="table-action">Reports</button>
+          </div>
+        </div>
         <table>
           <thead>
             <tr>
-              <th>Company</th><th>Name</th><th>Salesperson</th><th>Product</th><th>Date Added</th><th>Estimate</th><th>Quote</th><th>Status</th>
+              {activeCols.map((c) => <th key={c.key}>{c.label}</th>)}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.customer_id}>
-                <td><a href={href(`/prospects/${r.customer_id}`)} onClick={(e) => { e.preventDefault(); go(`/prospects/${r.customer_id}`); }}>{r.customer_company || "(no company)"}</a></td>
-                <td>{r.customer_name || ""}</td>
-                <td>{r.salesperson_name || ""}</td>
-                <td>{r.products_name || ""}</td>
-                <td>{r.date_added_time || relDate(r.customer_date)}</td>
-                <td>{r.customer_estimate_display || ""}</td>
-                <td>{r.customer_quote_display || ""}</td>
-                <td><span className="pill status-pill">{r.status_label || "Open"}</span></td>
+                {activeCols.map((c) => <td key={c.key}>{cellFor(r, c.key)}</td>)}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {showColumns ? (
+        <div className="modal-backdrop" onClick={() => setShowColumns(false)}>
+          <div className="columns-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="columns-head">
+              <h3 style={{ margin: 0 }}>Click on columns to add or remove</h3>
+              <button className="table-action" type="button" onClick={() => setShowColumns(false)}>Close</button>
+            </div>
+            <div className="columns-grid">
+              {columnDefs.map((c) => (
+                <div key={c.key} className="column-card">
+                  <div className={`column-icon ${c.color}`}></div>
+                  <div className="column-text">
+                    <div className="column-title">{c.label}</div>
+                    <div className="column-desc">{c.description}</div>
+                    <button className="column-toggle" type="button" onClick={() => toggleColumn(c.key)}>
+                      {visibleColumns[c.key] ? "Remove Column" : "+ Add Column"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

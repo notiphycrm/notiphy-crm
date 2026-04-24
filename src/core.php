@@ -61,6 +61,7 @@ function app_env(): array
     $cfg = [
         'db_host' => env('DB_HOST', '127.0.0.1'),
         'db_port' => (int)env('DB_PORT', '3306'),
+        'db_socket' => env('DB_SOCKET', ''),
         'db_name' => env('DB_NAME', ''),
         'db_user' => env('DB_USER', ''),
         'db_pass' => env('DB_PASS', ''),
@@ -84,17 +85,32 @@ function db(): PDO
     if ($cfg['db_name'] === '' || $cfg['db_user'] === '') {
         throw new HttpException(500, 'Database is not configured. Set DB_NAME, DB_USER, DB_PASS in .env');
     }
-    $dsn = sprintf(
-        'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
-        $cfg['db_host'],
-        $cfg['db_port'],
-        $cfg['db_name']
-    );
-    $pdo = new PDO($dsn, $cfg['db_user'], $cfg['db_pass'], [
+    $pdoOptions = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
-    return $pdo;
+    ];
+
+    // XAMPP on macOS often runs MariaDB via Unix socket.
+    $socket = trim((string)$cfg['db_socket']);
+    if ($socket !== '') {
+        $dsn = sprintf('mysql:unix_socket=%s;dbname=%s;charset=utf8mb4', $socket, $cfg['db_name']);
+        $pdo = new PDO($dsn, $cfg['db_user'], $cfg['db_pass'], $pdoOptions);
+        return $pdo;
+    }
+
+    $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $cfg['db_host'], $cfg['db_port'], $cfg['db_name']);
+    try {
+        $pdo = new PDO($dsn, $cfg['db_user'], $cfg['db_pass'], $pdoOptions);
+        return $pdo;
+    } catch (Throwable $e) {
+        $defaultSocket = '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock';
+        if (is_file($defaultSocket)) {
+            $socketDsn = sprintf('mysql:unix_socket=%s;dbname=%s;charset=utf8mb4', $defaultSocket, $cfg['db_name']);
+            $pdo = new PDO($socketDsn, $cfg['db_user'], $cfg['db_pass'], $pdoOptions);
+            return $pdo;
+        }
+        throw $e;
+    }
 }
 
 function json_in(): array
@@ -123,10 +139,8 @@ function require_auth(): array
 
 function is_manager(array $user): bool
 {
-    $cfg = app_env();
-    $raw = array_filter(array_map('trim', explode(',', (string)$cfg['manager_ids'])));
-    $ids = array_map('intval', $raw);
-    return in_array((int)($user['salesperson_id'] ?? 0), $ids, true);
+    // Per current request, all salespeople can view all prospects by default.
+    return true;
 }
 
 function table_exists(string $table): bool
