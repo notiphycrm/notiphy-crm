@@ -62,7 +62,6 @@ function App() {
     return r === "/" ? "/dashboard" : r;
   });
   const [me, setMe] = useState(null);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -72,13 +71,6 @@ function App() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  useEffect(() => {
-    api("/api/dashboard")
-      .then(() => setMe({ authenticated: true }))
-      .catch(() => setMe(null))
-      .finally(() => setCheckingSession(false));
   }, []);
 
   const go = (to) => {
@@ -100,10 +92,6 @@ function App() {
     setMe(null);
     go("/dashboard");
   };
-
-  if (checkingSession) {
-    return <div className="container"><div className="card">Loading...</div></div>;
-  }
 
   if (!me) {
     return <LoginPage onLogin={onLogin} error={error} setError={setError} />;
