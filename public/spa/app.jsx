@@ -229,6 +229,7 @@ function ProspectsPage({ go }) {
   const [createBusy, setCreateBusy] = useState(false);
   const [createError, setCreateError] = useState("");
   const [showColumns, setShowColumns] = useState(false);
+  const [tableSort, setTableSort] = useState({ key: "date_added", dir: "desc" });
   const [visibleColumns, setVisibleColumns] = useState({
     company: true,
     name: true,
@@ -344,6 +345,49 @@ function ProspectsPage({ go }) {
     if (key === "web_site") return r.customer_web || "";
     return "";
   };
+  const sortableValueFor = (r, key) => {
+    if (key === "company") return String(r.customer_company || "").toLowerCase();
+    if (key === "name") return String(r.customer_name || "").toLowerCase();
+    if (key === "country") return String(r.countries_name || "").toLowerCase();
+    if (key === "site") return String(r.site_label || "").toLowerCase();
+    if (key === "salesperson") return String(r.salesperson_name || "").toLowerCase();
+    if (key === "product") return String(r.products_name || "").toLowerCase();
+    if (key === "progress") return Number(r.progress_percent || 0);
+    if (key === "estimate") return Number(r.customer_estimate || 0);
+    if (key === "quote") return Number(r.customer_quote || 0);
+    if (key === "sale") return Number(r.customer_sale || 0);
+    if (key === "date_added") return new Date(r.customer_date || 0).getTime() || 0;
+    if (key === "last_event") return new Date(r.last_timeline_date || 0).getTime() || 0;
+    if (key === "expected") return new Date(r.customer_sale_date || 0).getTime() || 0;
+    if (key === "industry") return String(r.industries_name || "").toLowerCase();
+    if (key === "application") return String(r.application_name || "").toLowerCase();
+    if (key === "probability") return String(r.probability_name || "").toLowerCase();
+    if (key === "email") return String(r.customer_email || "").toLowerCase();
+    if (key === "phone") return String(r.customer_phone || "").toLowerCase();
+    if (key === "status") return String(r.status_label || "").toLowerCase();
+    if (key === "customer") return Number(r.customer_existing || 0);
+    if (key === "source") return String(r.referral_type || "").toLowerCase();
+    if (key === "cell_phone") return String(r.customer_cell || "").toLowerCase();
+    if (key === "web_site") return String(r.customer_web || "").toLowerCase();
+    return "";
+  };
+  const sortedRows = [...rows].sort((a, b) => {
+    const av = sortableValueFor(a, tableSort.key);
+    const bv = sortableValueFor(b, tableSort.key);
+    if (av === bv) return 0;
+    const cmp = av > bv ? 1 : -1;
+    return tableSort.dir === "asc" ? cmp : -cmp;
+  });
+  const onSortHeader = (key) => {
+    setTableSort((s) => {
+      if (s.key === key) return { key, dir: s.dir === "asc" ? "desc" : "asc" };
+      return { key, dir: "asc" };
+    });
+  };
+  const sortMark = (key) => {
+    if (tableSort.key !== key) return "";
+    return tableSort.dir === "asc" ? " ▲" : " ▼";
+  };
 
   const createProspect = async () => {
     setCreateBusy(true);
@@ -447,11 +491,15 @@ function ProspectsPage({ go }) {
         <table>
           <thead>
             <tr>
-              {activeCols.map((c) => <th key={c.key}>{c.label}</th>)}
+              {activeCols.map((c) => (
+                <th key={c.key} onClick={() => onSortHeader(c.key)} style={{ cursor: "pointer", userSelect: "none" }}>
+                  {c.label}{sortMark(c.key)}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {sortedRows.map((r) => (
               <tr key={r.customer_id}>
                 {activeCols.map((c) => <td key={c.key}>{cellFor(r, c.key)}</td>)}
               </tr>
