@@ -435,8 +435,27 @@ function ProspectsPage({ go }) {
           </tbody>
         </table>
       </div>
-      <div className="modal-backdrop" role="dialog" aria-modal="true" style={{ display: showColumns ? "flex" : "none" }}>
-        <div className="columns-modal" style={{ boxShadow: "0 18px 48px rgba(10,35,80,.28)" }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={() => setShowColumns(false)}
+        style={{
+          display: showColumns ? "flex" : "none",
+          position: "fixed",
+          inset: 0,
+          zIndex: 99999,
+          background: "rgba(8, 16, 32, 0.28)",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          padding: "36px 20px",
+          overflow: "auto",
+        }}
+      >
+        <div
+          className="columns-modal"
+          onClick={(e) => e.stopPropagation()}
+          style={{ boxShadow: "0 18px 48px rgba(10,35,80,.28)", width: "min(1080px, 100%)" }}
+        >
           <div className="columns-head">
             <h3 style={{ margin: 0 }}>Click on columns to add or remove</h3>
             <button className="table-action" type="button" onClick={() => setShowColumns(false)}>Close</button>
