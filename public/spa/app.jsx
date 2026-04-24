@@ -1,4 +1,4 @@
-const { useEffect, useMemo, useState } = React;
+const { useEffect, useState } = React;
 
 function getCrmBase() {
   if (typeof window === "undefined") return "";
@@ -201,6 +201,21 @@ function ProspectsPage({ go }) {
   const [lookups, setLookups] = useState({ salespeople: [], products: [], statuses: [], stages: [] });
   const [filters, setFilters] = useState({ search: "", salesperson: 0, product: 0, status: 0, stage: 0, sort: "date", limit: 50, offset: 0 });
   const [report, setReport] = useState({ totals: {}, graphs: {} });
+  const [showCreate, setShowCreate] = useState(false);
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [newProspect, setNewProspect] = useState({
+    customer_company: "",
+    customer_name: "",
+    customer_email: "",
+    customer_phone: "",
+    customer_salesperson: 0,
+    customer_product: 0,
+    customer_stage: 0,
+    customer_status: 1,
+    customer_estimate: "",
+    initial_note: "",
+  });
 
   const load = async () => {
     const q = new URLSearchParams(Object.entries(filters).reduce((acc, [k, v]) => {
@@ -218,10 +233,52 @@ function ProspectsPage({ go }) {
   useEffect(() => { load(); }, []); // initial
 
   const t = report.totals || {};
+
+  const createProspect = async () => {
+    setCreateBusy(true);
+    setCreateError("");
+    try {
+      const payload = {
+        ...newProspect,
+        customer_salesperson: Number(newProspect.customer_salesperson || 0),
+        customer_product: Number(newProspect.customer_product || 0),
+        customer_stage: Number(newProspect.customer_stage || 0),
+        customer_status: Number(newProspect.customer_status || 0),
+        customer_estimate: newProspect.customer_estimate === "" ? 0 : Number(newProspect.customer_estimate),
+      };
+      const res = await api("/api/prospects", { method: "POST", body: payload });
+      setShowCreate(false);
+      setNewProspect({
+        customer_company: "",
+        customer_name: "",
+        customer_email: "",
+        customer_phone: "",
+        customer_salesperson: 0,
+        customer_product: 0,
+        customer_stage: 0,
+        customer_status: 1,
+        customer_estimate: "",
+        initial_note: "",
+      });
+      await load();
+      if (res?.customer_id) go(`/prospects/${res.customer_id}`);
+    } catch (err) {
+      setCreateError(err.message || "Failed to create prospect");
+    } finally {
+      setCreateBusy(false);
+    }
+  };
+
   return (
     <>
       <div className="card">
-        <h2>Prospect Filters</h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <h2 style={{ marginBottom: 0 }}>Prospect Filters</h2>
+          <button className="primary" type="button" onClick={() => setShowCreate((v) => !v)}>
+            {showCreate ? "Close New Prospect" : "+ Add Prospect"}
+          </button>
+        </div>
+        <div style={{ height: 12 }} />
         <div className="filter-row">
           <div className="field"><label>Search</label><input value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></div>
           <SelectField label="Salesperson" list={lookups.salespeople} value={filters.salesperson} onChange={(v) => setFilters({ ...filters, salesperson: Number(v) })} />
@@ -232,6 +289,29 @@ function ProspectsPage({ go }) {
         </div>
         <button className="primary" style={{ marginTop: 12 }} onClick={load}>Apply Filters</button>
       </div>
+      {showCreate ? (
+        <div className="card">
+          <h2>Create Prospect</h2>
+          {createError ? <div className="muted" style={{ color: "#ff8f8f" }}>{createError}</div> : null}
+          <div className="filter-row">
+            <div className="field"><label>Company</label><input value={newProspect.customer_company} onChange={(e) => setNewProspect({ ...newProspect, customer_company: e.target.value })} /></div>
+            <div className="field"><label>Contact Name</label><input value={newProspect.customer_name} onChange={(e) => setNewProspect({ ...newProspect, customer_name: e.target.value })} /></div>
+            <div className="field"><label>Email</label><input value={newProspect.customer_email} onChange={(e) => setNewProspect({ ...newProspect, customer_email: e.target.value })} /></div>
+            <div className="field"><label>Phone</label><input value={newProspect.customer_phone} onChange={(e) => setNewProspect({ ...newProspect, customer_phone: e.target.value })} /></div>
+            <SelectField label="Salesperson" list={lookups.salespeople} value={newProspect.customer_salesperson} onChange={(v) => setNewProspect({ ...newProspect, customer_salesperson: Number(v) })} />
+            <SelectField label="Product" list={lookups.products} value={newProspect.customer_product} onChange={(v) => setNewProspect({ ...newProspect, customer_product: Number(v) })} />
+          </div>
+          <div className="filter-row" style={{ marginTop: 10 }}>
+            <SelectField label="Stage" list={lookups.stages} value={newProspect.customer_stage} onChange={(v) => setNewProspect({ ...newProspect, customer_stage: Number(v) })} />
+            <SelectField label="Status" list={lookups.statuses} value={newProspect.customer_status} onChange={(v) => setNewProspect({ ...newProspect, customer_status: Number(v) })} />
+            <div className="field"><label>Estimate</label><input type="number" value={newProspect.customer_estimate} onChange={(e) => setNewProspect({ ...newProspect, customer_estimate: e.target.value })} /></div>
+            <div className="field" style={{ gridColumn: "span 3" }}><label>Initial Note</label><input value={newProspect.initial_note} onChange={(e) => setNewProspect({ ...newProspect, initial_note: e.target.value })} /></div>
+          </div>
+          <button className="primary" style={{ marginTop: 12 }} type="button" disabled={createBusy} onClick={createProspect}>
+            {createBusy ? "Creating..." : "Create Prospect"}
+          </button>
+        </div>
+      ) : null}
 
       <div className="card ai-box">
         <h2>Prospects Report</h2>
@@ -283,9 +363,82 @@ function SelectField({ label, list, value, onChange }) {
 
 function ProspectDetailPage({ id, go }) {
   const [detail, setDetail] = useState({ customer: {}, timeline: [] });
+  const [lookups, setLookups] = useState({ salespeople: [], products: [], statuses: [], stages: [] });
+  const [edit, setEdit] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+  const [activity, setActivity] = useState({ timeline_type: 1, timeline_comment: "", timeline_subject: "", timeline_sale: "", timeline_date: "" });
+  const [reminder, setReminder] = useState({ timeline_comment: "", timeline_date: "" });
   useEffect(() => {
     api(`/api/prospects/${id}`).then(setDetail).catch(() => setDetail({ customer: {}, timeline: [] }));
   }, [id]);
+  useEffect(() => {
+    api("/api/lookups/prospect-filters").then(setLookups).catch(() => {});
+  }, []);
+  useEffect(() => {
+    const c = detail.customer || {};
+    setEdit({
+      customer_company: c.customer_company || "",
+      customer_name: c.customer_name || "",
+      customer_email: c.customer_email || "",
+      customer_phone: c.customer_phone || "",
+      customer_salesperson: Number(c.customer_salesperson || 0),
+      customer_product: Number(c.customer_product || 0),
+      customer_stage: Number(c.customer_stage || 0),
+      customer_status: Number(c.customer_status || 0),
+      customer_estimate: c.customer_estimate || "",
+      customer_quote: c.customer_quote || "",
+    });
+  }, [detail.customer?.customer_id]);
+
+  const reload = async () => {
+    const d = await api(`/api/prospects/${id}`);
+    setDetail(d);
+  };
+
+  const saveCustomer = async () => {
+    if (!edit) return;
+    setSaving(true);
+    setSaveMsg("");
+    try {
+      await api(`/api/prospects/${id}`, { method: "PATCH", body: edit });
+      setSaveMsg("Saved");
+      await reload();
+    } catch (err) {
+      setSaveMsg(err.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addActivity = async () => {
+    try {
+      await api(`/api/prospects/${id}/timeline`, {
+        method: "POST",
+        body: {
+          timeline_type: Number(activity.timeline_type || 1),
+          timeline_comment: activity.timeline_comment,
+          timeline_subject: activity.timeline_subject,
+          timeline_sale: activity.timeline_sale === "" ? 0 : Number(activity.timeline_sale),
+        }
+      });
+      setActivity({ timeline_type: 1, timeline_comment: "", timeline_subject: "", timeline_sale: "", timeline_date: "" });
+      await reload();
+    } catch (err) {
+      alert(err.message || "Failed to add activity");
+    }
+  };
+
+  const addReminder = async () => {
+    try {
+      await api(`/api/prospects/${id}/reminder`, { method: "POST", body: reminder });
+      setReminder({ timeline_comment: "", timeline_date: "" });
+      await reload();
+    } catch (err) {
+      alert(err.message || "Failed to add reminder");
+    }
+  };
+
   const c = detail.customer || {};
   return (
     <>
@@ -293,6 +446,54 @@ function ProspectDetailPage({ id, go }) {
       <div className="card">
         <h2>{c.customer_company || "(no company)"}</h2>
         <div className="muted">{c.customer_name || ""} | {c.products_name || ""}</div>
+      </div>
+      {edit ? (
+        <div className="card">
+          <h3>Edit Prospect</h3>
+          <div className="filter-row">
+            <div className="field"><label>Company</label><input value={edit.customer_company} onChange={(e) => setEdit({ ...edit, customer_company: e.target.value })} /></div>
+            <div className="field"><label>Name</label><input value={edit.customer_name} onChange={(e) => setEdit({ ...edit, customer_name: e.target.value })} /></div>
+            <div className="field"><label>Email</label><input value={edit.customer_email} onChange={(e) => setEdit({ ...edit, customer_email: e.target.value })} /></div>
+            <div className="field"><label>Phone</label><input value={edit.customer_phone} onChange={(e) => setEdit({ ...edit, customer_phone: e.target.value })} /></div>
+            <SelectField label="Salesperson" list={lookups.salespeople} value={edit.customer_salesperson} onChange={(v) => setEdit({ ...edit, customer_salesperson: Number(v) })} />
+            <SelectField label="Product" list={lookups.products} value={edit.customer_product} onChange={(v) => setEdit({ ...edit, customer_product: Number(v) })} />
+          </div>
+          <div className="filter-row" style={{ marginTop: 10 }}>
+            <SelectField label="Stage" list={lookups.stages} value={edit.customer_stage} onChange={(v) => setEdit({ ...edit, customer_stage: Number(v) })} />
+            <SelectField label="Status" list={lookups.statuses} value={edit.customer_status} onChange={(v) => setEdit({ ...edit, customer_status: Number(v) })} />
+            <div className="field"><label>Estimate</label><input type="number" value={edit.customer_estimate} onChange={(e) => setEdit({ ...edit, customer_estimate: e.target.value })} /></div>
+            <div className="field"><label>Quote</label><input type="number" value={edit.customer_quote} onChange={(e) => setEdit({ ...edit, customer_quote: e.target.value })} /></div>
+          </div>
+          <button className="primary" style={{ marginTop: 12 }} disabled={saving} onClick={saveCustomer}>{saving ? "Saving..." : "Save Changes"}</button>
+          {saveMsg ? <div className="muted" style={{ marginTop: 10 }}>{saveMsg}</div> : null}
+        </div>
+      ) : null}
+      <div className="card">
+        <h3>Add Activity</h3>
+        <div className="filter-row">
+          <div className="field">
+            <label>Type</label>
+            <select value={activity.timeline_type} onChange={(e) => setActivity({ ...activity, timeline_type: Number(e.target.value) })}>
+              <option value="1">Progress</option>
+              <option value="4">Sale</option>
+              <option value="8">Quote</option>
+              <option value="2">Lost</option>
+              <option value="10">Customer Enquiry</option>
+            </select>
+          </div>
+          <div className="field"><label>Subject</label><input value={activity.timeline_subject} onChange={(e) => setActivity({ ...activity, timeline_subject: e.target.value })} /></div>
+          <div className="field"><label>Amount</label><input type="number" value={activity.timeline_sale} onChange={(e) => setActivity({ ...activity, timeline_sale: e.target.value })} /></div>
+          <div className="field" style={{ gridColumn: "span 3" }}><label>Message</label><input value={activity.timeline_comment} onChange={(e) => setActivity({ ...activity, timeline_comment: e.target.value })} /></div>
+        </div>
+        <button className="primary" style={{ marginTop: 12 }} onClick={addActivity}>Post Activity</button>
+      </div>
+      <div className="card">
+        <h3>Add Reminder</h3>
+        <div className="filter-row">
+          <div className="field"><label>Reminder Date</label><input type="datetime-local" value={reminder.timeline_date} onChange={(e) => setReminder({ ...reminder, timeline_date: e.target.value })} /></div>
+          <div className="field" style={{ gridColumn: "span 3" }}><label>Reminder Note</label><input value={reminder.timeline_comment} onChange={(e) => setReminder({ ...reminder, timeline_comment: e.target.value })} /></div>
+        </div>
+        <button className="primary" style={{ marginTop: 12 }} onClick={addReminder}>Create Reminder</button>
       </div>
       <div className="card">
         <h3>Timeline</h3>

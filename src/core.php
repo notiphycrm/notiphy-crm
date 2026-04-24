@@ -221,7 +221,7 @@ function prospect_where(array $f, array $user): array
         $params[] = (int)$f['referral'];
     }
     if (!empty($f['site'])) {
-        $where[] = 'c.customer_website = ?';
+        $where[] = 'c.customer_site = ?';
         $params[] = (int)$f['site'];
     }
     if (!empty($f['probability'])) {

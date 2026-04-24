@@ -28,6 +28,10 @@ function route_request(string $method, string $path): void
         route_prospects();
         return;
     }
+    if ($method === 'POST' && $path === 'prospects') {
+        route_create_prospect();
+        return;
+    }
     if ($method === 'GET' && $path === 'dashboard') {
         route_dashboard();
         return;
@@ -38,6 +42,18 @@ function route_request(string $method, string $path): void
     }
     if ($method === 'GET' && preg_match('/^prospects\/(\d+)$/', $path, $m)) {
         route_prospect_detail((int)$m[1]);
+        return;
+    }
+    if ($method === 'PATCH' && preg_match('/^prospects\/(\d+)$/', $path, $m)) {
+        route_update_prospect((int)$m[1]);
+        return;
+    }
+    if ($method === 'POST' && preg_match('/^prospects\/(\d+)\/timeline$/', $path, $m)) {
+        route_add_timeline((int)$m[1]);
+        return;
+    }
+    if ($method === 'POST' && preg_match('/^prospects\/(\d+)\/reminder$/', $path, $m)) {
+        route_add_reminder((int)$m[1]);
         return;
     }
     if ($method === 'GET' && $path === 'notifications') {
@@ -438,6 +454,191 @@ function route_prospect_detail(int $id): void
         'customer' => $customer,
         'timeline' => $timeline,
     ]);
+}
+
+function route_create_prospect(): void
+{
+    $user = require_auth();
+    $body = json_in();
+    $company = trim((string)($body['customer_company'] ?? ''));
+    $name = trim((string)($body['customer_name'] ?? ''));
+    if ($company === '' && $name === '') {
+        throw new HttpException(400, 'Company or contact name is required');
+    }
+
+    $salesId = (int)($body['customer_salesperson'] ?? 0);
+    if ($salesId <= 0) {
+        $salesId = (int)$user['salesperson_id'];
+    }
+    if (!is_manager($user)) {
+        $salesId = (int)$user['salesperson_id'];
+    }
+
+    $estimate = (float)($body['customer_estimate'] ?? 0);
+    $quote = (float)($body['customer_quote'] ?? 0);
+    $stage = max(0, (int)($body['customer_stage'] ?? 0));
+    $status = max(0, (int)($body['customer_status'] ?? 0));
+    $product = max(0, (int)($body['customer_product'] ?? 0));
+    $referral = max(0, (int)($body['customer_referral'] ?? 0));
+    $site = max(0, (int)($body['customer_site'] ?? 0));
+    $application = max(0, (int)($body['customer_application'] ?? 0));
+    $industry = max(0, (int)($body['customer_industry'] ?? 0));
+    $probability = max(0, (int)($body['customer_probability'] ?? 0));
+
+    $stmt = db()->prepare(
+        "INSERT INTO crm_customers (
+            account_id, customer_existing, customer_name, customer_company, customer_email, customer_phone,
+            customer_referral, customer_salesperson, customer_application, customer_industry, customer_product,
+            customer_date, customer_estimate, customer_quote, customer_probability, customer_stage, customer_status,
+            customer_sale, customer_site, last_update, customer_type
+        ) VALUES (
+            1, 0, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            NOW(), ?, ?, ?, ?, ?,
+            0, ?, NOW(), 1
+        )"
+    );
+    $stmt->execute([
+        $name,
+        $company,
+        trim((string)($body['customer_email'] ?? '')),
+        trim((string)($body['customer_phone'] ?? '')),
+        $referral,
+        $salesId,
+        $application,
+        $industry,
+        $product,
+        $estimate,
+        $quote,
+        $probability,
+        $stage,
+        $status,
+        $site,
+    ]);
+    $id = (int)db()->lastInsertId();
+
+    if (!empty($body['initial_note'])) {
+        create_timeline_entry($id, (int)$user['salesperson_id'], 1, trim((string)$body['initial_note']), 0.0, null);
+    }
+    json_out(['ok' => true, 'customer_id' => $id], 201);
+}
+
+function route_update_prospect(int $id): void
+{
+    $user = require_auth();
+    $existing = one_row("SELECT customer_id, customer_salesperson FROM crm_customers WHERE customer_id = ?", [$id]);
+    if (!$existing) {
+        throw new HttpException(404, 'Customer not found');
+    }
+    if (!is_manager($user) && (int)$existing['customer_salesperson'] !== (int)$user['salesperson_id']) {
+        throw new HttpException(403, 'Not allowed to edit this customer');
+    }
+
+    $body = json_in();
+    $fields = [
+        'customer_name', 'customer_company', 'customer_email', 'customer_phone', 'customer_stage', 'customer_status',
+        'customer_product', 'customer_referral', 'customer_site', 'customer_application', 'customer_industry',
+        'customer_probability', 'customer_estimate', 'customer_quote'
+    ];
+    $sets = [];
+    $params = [];
+    foreach ($fields as $f) {
+        if (array_key_exists($f, $body)) {
+            $sets[] = "{$f} = ?";
+            $params[] = $body[$f];
+        }
+    }
+    if (is_manager($user) && array_key_exists('customer_salesperson', $body)) {
+        $sets[] = "customer_salesperson = ?";
+        $params[] = (int)$body['customer_salesperson'];
+    }
+    if (empty($sets)) {
+        json_out(['ok' => true, 'customer_id' => $id]);
+        return;
+    }
+    $sets[] = "last_update = NOW()";
+    $params[] = $id;
+    $sql = "UPDATE crm_customers SET " . implode(', ', $sets) . " WHERE customer_id = ?";
+    db()->prepare($sql)->execute($params);
+    json_out(['ok' => true, 'customer_id' => $id]);
+}
+
+function route_add_timeline(int $id): void
+{
+    $user = require_auth();
+    assert_can_access_customer($id, $user);
+    $body = json_in();
+    $type = (int)($body['timeline_type'] ?? 1);
+    if ($type < 1 || $type > 11) {
+        $type = 1;
+    }
+    $comment = trim((string)($body['timeline_comment'] ?? ''));
+    $subject = trim((string)($body['timeline_subject'] ?? ''));
+    $sale = (float)($body['timeline_sale'] ?? 0);
+    if ($comment === '' && $subject === '' && $sale <= 0) {
+        throw new HttpException(400, 'Timeline message is required');
+    }
+    $timelineDate = trim((string)($body['timeline_date'] ?? ''));
+    $dt = $timelineDate !== '' ? date('Y-m-d H:i:s', strtotime($timelineDate)) : null;
+    $timelineId = create_timeline_entry($id, (int)$user['salesperson_id'], $type, $comment, $sale, $dt, $subject);
+    json_out(['ok' => true, 'timeline_id' => $timelineId], 201);
+}
+
+function route_add_reminder(int $id): void
+{
+    $user = require_auth();
+    assert_can_access_customer($id, $user);
+    $body = json_in();
+    $comment = trim((string)($body['timeline_comment'] ?? ''));
+    if ($comment === '') {
+        $comment = 'Follow up reminder';
+    }
+    $timelineDate = trim((string)($body['timeline_date'] ?? ''));
+    if ($timelineDate === '') {
+        throw new HttpException(400, 'Reminder date is required');
+    }
+    $dt = date('Y-m-d H:i:s', strtotime($timelineDate));
+    $timelineId = create_timeline_entry($id, (int)$user['salesperson_id'], 5, $comment, 0.0, $dt);
+    json_out(['ok' => true, 'timeline_id' => $timelineId], 201);
+}
+
+function assert_can_access_customer(int $id, array $user): void
+{
+    $row = one_row("SELECT customer_id, customer_salesperson FROM crm_customers WHERE customer_id=?", [$id]);
+    if (!$row) {
+        throw new HttpException(404, 'Customer not found');
+    }
+    if (!is_manager($user) && (int)$row['customer_salesperson'] !== (int)$user['salesperson_id']) {
+        throw new HttpException(403, 'Not allowed for this customer');
+    }
+}
+
+function create_timeline_entry(
+    int $customerId,
+    int $salesId,
+    int $type,
+    string $comment,
+    float $sale,
+    ?string $timelineDate = null,
+    ?string $subject = null
+): int {
+    $dateVal = $timelineDate ?? date('Y-m-d H:i:s');
+    $stmt = db()->prepare(
+        "INSERT INTO crm_timeline (
+            timeline_type, customer_id, existing_id, sales_id, timeline_comment, timeline_sale,
+            timeline_subject, timeline_date, timeline_completed, timeline_notified, timeline_shared, timeline_mail
+        ) VALUES (?, ?, 0, ?, ?, ?, ?, ?, 0, 0, 0, 0)"
+    );
+    $stmt->execute([
+        $type,
+        $customerId,
+        $salesId,
+        $comment,
+        $sale,
+        $subject ?? '',
+        $dateVal,
+    ]);
+    return (int)db()->lastInsertId();
 }
 
 function route_notifications(): void
