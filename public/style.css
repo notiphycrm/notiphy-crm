@@ -78,6 +78,14 @@ table{
   border-radius:12px;
   border:1px solid #dfe6f4;
 }
+.table-scroll{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+.table-scroll table{
+  min-width:1460px;
+}
 thead th{
   text-align:left;
   padding:10px 12px;
@@ -267,6 +275,14 @@ tbody tr:hover{background:#f7faff}
 }
 .column-icon{
   width:56px;height:56px;border-radius:12px;flex:0 0 56px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+}
+.column-icon svg{
+  width:30px;
+  height:30px;
 }
 .column-text{display:flex;flex-direction:column;gap:6px}
 .column-title{font-weight:800}

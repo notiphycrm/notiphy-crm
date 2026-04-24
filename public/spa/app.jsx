@@ -56,6 +56,29 @@ function relDate(input) {
   return `${Math.floor(diffHours / 24)} days ago`;
 }
 
+function ColumnIcon({ name }) {
+  const common = { width: 30, height: 30, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  if (name === "user") return <svg {...common}><circle cx="12" cy="8" r="3.5" /><path d="M5 19c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5" /></svg>;
+  if (name === "globe") return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M3.5 12h17" /><path d="M12 3a15 15 0 0 1 0 18" /><path d="M12 3a15 15 0 0 0 0 18" /></svg>;
+  if (name === "sales") return <svg {...common}><circle cx="8.5" cy="8" r="2.2" /><circle cx="15.5" cy="8" r="2.2" /><path d="M4.5 18c.8-2.2 2.4-3.5 4-3.5s3.2 1.3 4 3.5" /><path d="M11.5 18c.8-2.2 2.4-3.5 4-3.5s3.2 1.3 4 3.5" /></svg>;
+  if (name === "site") return <svg {...common}><rect x="3.5" y="5" width="17" height="12" rx="2" /><path d="M3.5 9h17" /><path d="M7 19h10" /></svg>;
+  if (name === "box") return <svg {...common}><path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" /><path d="M4 7l8 4 8-4" /><path d="M12 11v10" /></svg>;
+  if (name === "progress") return <svg {...common}><path d="M4 20V9" /><path d="M10 20V5" /><path d="M16 20v-7" /><path d="M22 20H2" /></svg>;
+  if (name === "money") return <svg {...common}><rect x="3.5" y="6" width="17" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 12h.01M17.5 12h.01" /></svg>;
+  if (name === "file") return <svg {...common}><path d="M8 3.5h6l4 4V20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" /><path d="M14 3.5V8h4" /></svg>;
+  if (name === "calendar") return <svg {...common}><rect x="3.5" y="5.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17" /><path d="M8 3.5v4M16 3.5v4" /></svg>;
+  if (name === "clock") return <svg {...common}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5v5l3.5 2" /></svg>;
+  if (name === "factory") return <svg {...common}><path d="M3.5 20V9.5l6 3v-3l6 3v-3l5 2.5V20Z" /><path d="M9 20v-4h3v4" /></svg>;
+  if (name === "app") return <svg {...common}><rect x="3.5" y="3.5" width="17" height="17" rx="3" /><path d="M8.5 8.5h7v7h-7z" /></svg>;
+  if (name === "percent") return <svg {...common}><path d="M6 18 18 6" /><circle cx="7" cy="7" r="2" /><circle cx="17" cy="17" r="2" /></svg>;
+  if (name === "mail") return <svg {...common}><rect x="3.5" y="6" width="17" height="12" rx="2" /><path d="m4.5 8 7.5 5 7.5-5" /></svg>;
+  if (name === "phone") return <svg {...common}><path d="M7 4h3l1 4-2 1a14 14 0 0 0 6 6l1-2 4 1v3c0 1-1 2-2 2A16 16 0 0 1 5 6c0-1 1-2 2-2Z" /></svg>;
+  if (name === "target") return <svg {...common}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1.5" /></svg>;
+  if (name === "star") return <svg {...common}><path d="m12 3.8 2.5 5.1 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z" /></svg>;
+  if (name === "check") return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 12 2.5 2.5L16 9" /></svg>;
+  return <svg {...common}><circle cx="12" cy="12" r="8.5" /></svg>;
+}
+
 function App() {
   const [path, setPath] = useState(() => {
     const r = appRouteFromLocation();
@@ -262,29 +285,29 @@ function ProspectsPage({ go }) {
 
   const t = report.totals || {};
   const columnDefs = [
-    { key: "company", label: "Company", description: "Company name", color: "c-blue" },
-    { key: "name", label: "Name", description: "Name of the prospect to contact", color: "c-blue" },
-    { key: "country", label: "Country", description: "Country of origin for the prospect", color: "c-lime" },
-    { key: "salesperson", label: "Salesperson", description: "Salesperson dealing with this prospect", color: "c-pink" },
-    { key: "site", label: "Site", description: "Website the prospect came from", color: "c-yellow" },
-    { key: "product", label: "Product", description: "Product the prospect is interested in", color: "c-orange" },
-    { key: "progress", label: "Progress", description: "Progress stage the prospect is at", color: "c-green" },
-    { key: "estimate", label: "Estimate", description: "Estimated value of prospect", color: "c-khaki" },
-    { key: "quote", label: "Quote", description: "Value of last quote sent out", color: "c-sky" },
-    { key: "date_added", label: "Date Added", description: "Date the prospect was contacted", color: "c-lemon" },
-    { key: "last_event", label: "Last Event", description: "Date of the last event with the prospect", color: "c-purple" },
-    { key: "industry", label: "Industry", description: "Industry the prospect is in", color: "c-teal" },
-    { key: "application", label: "Application", description: "Application the prospect uses", color: "c-red" },
-    { key: "probability", label: "Probability", description: "Probability of converting to a sale", color: "c-brown" },
-    { key: "expected", label: "Expected", description: "Expected sale date", color: "c-purple" },
-    { key: "email", label: "Email", description: "Prospect email address", color: "c-olive" },
-    { key: "phone", label: "Phone", description: "Prospect phone number", color: "c-violet" },
-    { key: "status", label: "Status", description: "Prospect status - win, lose or open", color: "c-green" },
-    { key: "sale", label: "Sale", description: "Value of prospect sale", color: "c-maroon" },
-    { key: "customer", label: "Customer", description: "Is the prospect a previous customer", color: "c-purple" },
-    { key: "source", label: "Source", description: "Where did the prospect find you", color: "c-teal" },
-    { key: "cell_phone", label: "Cell Phone", description: "Prospect cell phone number", color: "c-green" },
-    { key: "web_site", label: "Web Site", description: "Prospect web site address", color: "c-maroon" },
+    { key: "company", label: "Company", description: "Company name", color: "c-blue", icon: "factory" },
+    { key: "name", label: "Name", description: "Name of the prospect to contact", color: "c-blue", icon: "user" },
+    { key: "country", label: "Country", description: "Country of origin for the prospect", color: "c-lime", icon: "globe" },
+    { key: "salesperson", label: "Salesperson", description: "Salesperson dealing with this prospect", color: "c-pink", icon: "sales" },
+    { key: "site", label: "Site", description: "Website the prospect came from", color: "c-yellow", icon: "site" },
+    { key: "product", label: "Product", description: "Product the prospect is interested in", color: "c-orange", icon: "box" },
+    { key: "progress", label: "Progress", description: "Progress stage the prospect is at", color: "c-green", icon: "progress" },
+    { key: "estimate", label: "Estimate", description: "Estimated value of prospect", color: "c-khaki", icon: "money" },
+    { key: "quote", label: "Quote", description: "Value of last quote sent out", color: "c-sky", icon: "file" },
+    { key: "date_added", label: "Date Added", description: "Date the prospect was contacted", color: "c-lemon", icon: "calendar" },
+    { key: "last_event", label: "Last Event", description: "Date of the last event with the prospect", color: "c-purple", icon: "clock" },
+    { key: "industry", label: "Industry", description: "Industry the prospect is in", color: "c-teal", icon: "factory" },
+    { key: "application", label: "Application", description: "Application the prospect uses", color: "c-red", icon: "app" },
+    { key: "probability", label: "Probability", description: "Probability of converting to a sale", color: "c-brown", icon: "percent" },
+    { key: "expected", label: "Expected", description: "Expected sale date", color: "c-purple", icon: "target" },
+    { key: "email", label: "Email", description: "Prospect email address", color: "c-olive", icon: "mail" },
+    { key: "phone", label: "Phone", description: "Prospect phone number", color: "c-violet", icon: "phone" },
+    { key: "status", label: "Status", description: "Prospect status - win, lose or open", color: "c-green", icon: "check" },
+    { key: "sale", label: "Sale", description: "Value of prospect sale", color: "c-maroon", icon: "money" },
+    { key: "customer", label: "Customer", description: "Is the prospect a previous customer", color: "c-purple", icon: "user" },
+    { key: "source", label: "Source", description: "Where did the prospect find you", color: "c-teal", icon: "star" },
+    { key: "cell_phone", label: "Cell Phone", description: "Prospect cell phone number", color: "c-green", icon: "phone" },
+    { key: "web_site", label: "Web Site", description: "Prospect web site address", color: "c-maroon", icon: "site" },
   ];
   const activeCols = columnDefs.filter((c) => visibleColumns[c.key]);
   const toggleColumn = (key) => setVisibleColumns((s) => ({ ...s, [key]: !s[key] }));
@@ -420,6 +443,7 @@ function ProspectsPage({ go }) {
             <button type="button" className="table-action">Reports</button>
           </div>
         </div>
+        <div className="table-scroll">
         <table>
           <thead>
             <tr>
@@ -434,6 +458,7 @@ function ProspectsPage({ go }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       <div
         role="dialog"
@@ -462,8 +487,8 @@ function ProspectsPage({ go }) {
           </div>
           <div className="columns-grid">
             {columnDefs.map((c) => (
-              <div key={c.key} className="column-card">
-                <div className={`column-icon ${c.color}`}></div>
+                <div key={c.key} className="column-card">
+                  <div className={`column-icon ${c.color}`}><ColumnIcon name={c.icon} /></div>
                 <div className="column-text">
                   <div className="column-title">{c.label}</div>
                   <div className="column-desc">{c.description}</div>
