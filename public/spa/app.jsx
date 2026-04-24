@@ -288,6 +288,13 @@ function ProspectsPage({ go }) {
   ];
   const activeCols = columnDefs.filter((c) => visibleColumns[c.key]);
   const toggleColumn = (key) => setVisibleColumns((s) => ({ ...s, [key]: !s[key] }));
+  const toggleColumnsModal = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowColumns((v) => !v);
+  };
   const cellFor = (r, key) => {
     if (key === "company") return <a href={href(`/prospects/${r.customer_id}`)} onClick={(e) => { e.preventDefault(); go(`/prospects/${r.customer_id}`); }}>{r.customer_company || "(no company)"}</a>;
     if (key === "name") return r.customer_name || "";
@@ -406,13 +413,8 @@ function ProspectsPage({ go }) {
         <div className="list-head">
           <h2 style={{ marginBottom: 0 }}>Prospect List <span className="results-count">{total} Results</span></h2>
           <div className="list-actions">
-            <button
-              type="button"
-              className="table-action"
-              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowColumns(true); }}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowColumns(true); }}
-            >
-              Edit Columns
+            <button type="button" className="table-action" onClick={toggleColumnsModal}>
+              {showColumns ? "Close Columns" : "Edit Columns"}
             </button>
             <button type="button" className="table-action">Filters</button>
             <button type="button" className="table-action">Reports</button>
@@ -433,30 +435,28 @@ function ProspectsPage({ go }) {
           </tbody>
         </table>
       </div>
-      {showColumns ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="columns-modal" style={{ boxShadow: "0 18px 48px rgba(10,35,80,.28)" }}>
-            <div className="columns-head">
-              <h3 style={{ margin: 0 }}>Click on columns to add or remove</h3>
-              <button className="table-action" type="button" onClick={() => setShowColumns(false)}>Close</button>
-            </div>
-            <div className="columns-grid">
-              {columnDefs.map((c) => (
-                <div key={c.key} className="column-card">
-                  <div className={`column-icon ${c.color}`}></div>
-                  <div className="column-text">
-                    <div className="column-title">{c.label}</div>
-                    <div className="column-desc">{c.description}</div>
-                    <button className="column-toggle" type="button" onClick={() => toggleColumn(c.key)}>
-                      {visibleColumns[c.key] ? "Remove Column" : "+ Add Column"}
-                    </button>
-                  </div>
+      <div className="modal-backdrop" role="dialog" aria-modal="true" style={{ display: showColumns ? "flex" : "none" }}>
+        <div className="columns-modal" style={{ boxShadow: "0 18px 48px rgba(10,35,80,.28)" }}>
+          <div className="columns-head">
+            <h3 style={{ margin: 0 }}>Click on columns to add or remove</h3>
+            <button className="table-action" type="button" onClick={() => setShowColumns(false)}>Close</button>
+          </div>
+          <div className="columns-grid">
+            {columnDefs.map((c) => (
+              <div key={c.key} className="column-card">
+                <div className={`column-icon ${c.color}`}></div>
+                <div className="column-text">
+                  <div className="column-title">{c.label}</div>
+                  <div className="column-desc">{c.description}</div>
+                  <button className="column-toggle" type="button" onClick={() => toggleColumn(c.key)}>
+                    {visibleColumns[c.key] ? "Remove Column" : "+ Add Column"}
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
-      ) : null}
+      </div>
     </>
   );
 }
