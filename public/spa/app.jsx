@@ -406,7 +406,14 @@ function ProspectsPage({ go }) {
         <div className="list-head">
           <h2 style={{ marginBottom: 0 }}>Prospect List <span className="results-count">{total} Results</span></h2>
           <div className="list-actions">
-            <button type="button" className="table-action" onClick={(e) => { e.stopPropagation(); setShowColumns(true); }}>Edit Columns</button>
+            <button
+              type="button"
+              className="table-action"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowColumns(true); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowColumns(true); }}
+            >
+              Edit Columns
+            </button>
             <button type="button" className="table-action">Filters</button>
             <button type="button" className="table-action">Reports</button>
           </div>
@@ -427,8 +434,8 @@ function ProspectsPage({ go }) {
         </table>
       </div>
       {showColumns ? (
-        <div className="modal-backdrop">
-          <div className="columns-modal">
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="columns-modal" style={{ boxShadow: "0 18px 48px rgba(10,35,80,.28)" }}>
             <div className="columns-head">
               <h3 style={{ margin: 0 }}>Click on columns to add or remove</h3>
               <button className="table-action" type="button" onClick={() => setShowColumns(false)}>Close</button>
