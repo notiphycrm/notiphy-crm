@@ -229,13 +229,64 @@ function relative_time(?string $datetime): string
     }
     $diff = time() - $ts;
     $past = $diff >= 0;
-    $diff = abs($diff);
-    if ($diff >= 86400) {
-        $n = (int)floor($diff / 86400);
-        return $past ? "$n days ago" : "$n days remaining";
+    $seconds = abs($diff);
+
+    if ($seconds < 3600) {
+        $minutes = max(1, (int)floor($seconds / 60));
+        if ($past) {
+            return $minutes . ' min' . ($minutes === 1 ? '' : 's');
+        }
+        return 'in ' . $minutes . ' min' . ($minutes === 1 ? '' : 's');
     }
-    $h = max(1, (int)floor($diff / 3600));
-    return $past ? "$h hrs ago" : "$h hrs remaining";
+
+    if ($seconds < 86400) {
+        $sameDay = date('Y-m-d', $ts) === date('Y-m-d');
+        if ($past && $sameDay) {
+            return 'today';
+        }
+        $hours = max(1, (int)floor($seconds / 3600));
+        if ($past) {
+            return $hours . ' hour' . ($hours === 1 ? '' : 's');
+        }
+        return 'in ' . $hours . ' hour' . ($hours === 1 ? '' : 's');
+    }
+
+    $days = (int)floor($seconds / 86400);
+    if ($past && $days === 1) {
+        return 'yesterday';
+    }
+
+    if ($days < 7) {
+        if ($past) {
+            return $days . ' day' . ($days === 1 ? '' : 's');
+        }
+        return 'in ' . $days . ' day' . ($days === 1 ? '' : 's');
+    }
+
+    if ($days < 30) {
+        $weeks = (int)floor($days / 7);
+        $weeks = max(1, $weeks);
+        if ($past) {
+            return $weeks . ' week' . ($weeks === 1 ? '' : 's');
+        }
+        return 'in ' . $weeks . ' week' . ($weeks === 1 ? '' : 's');
+    }
+
+    if ($days < 365) {
+        $months = (int)floor($days / 30);
+        $months = max(1, $months);
+        if ($past) {
+            return $months . ' month' . ($months === 1 ? '' : 's');
+        }
+        return 'in ' . $months . ' month' . ($months === 1 ? '' : 's');
+    }
+
+    $years = (int)floor($days / 365);
+    $years = max(1, $years);
+    if ($past) {
+        return $years . ' year' . ($years === 1 ? '' : 's');
+    }
+    return 'in ' . $years . ' year' . ($years === 1 ? '' : 's');
 }
 
 function prospect_where(array $f, array $user): array

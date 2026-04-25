@@ -258,6 +258,32 @@ function ProspectsPage({ go }) {
   const [createError, setCreateError] = useState("");
   const [showColumns, setShowColumns] = useState(false);
   const [tableSort, setTableSort] = useState({ key: "date_added", dir: "desc" });
+  const [columnWidths, setColumnWidths] = useState({
+    company: 170,
+    name: 170,
+    country: 120,
+    site: 120,
+    salesperson: 130,
+    product: 120,
+    progress: 120,
+    date_added: 95,
+    estimate: 110,
+    quote: 100,
+    last_event: 95,
+    status: 110,
+    industry: 120,
+    application: 120,
+    probability: 110,
+    expected: 110,
+    email: 180,
+    phone: 130,
+    sale: 100,
+    customer: 110,
+    source: 120,
+    cell_phone: 130,
+    web_site: 170,
+  });
+  const [resizing, setResizing] = useState(null);
   const [visibleColumns, setVisibleColumns] = useState({
     company: true,
     name: true,
@@ -416,6 +442,31 @@ function ProspectsPage({ go }) {
     if (tableSort.key !== key) return "";
     return tableSort.dir === "asc" ? " ▲" : " ▼";
   };
+  const startResize = (key, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing({
+      key,
+      startX: e.clientX,
+      startWidth: Number(columnWidths[key] || 120),
+    });
+  };
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e) => {
+      const delta = e.clientX - resizing.startX;
+      const next = Math.max(80, resizing.startWidth + delta);
+      setColumnWidths((s) => ({ ...s, [resizing.key]: next }));
+    };
+    const onUp = () => setResizing(null);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [resizing]);
+  const tableMinWidth = activeCols.reduce((sum, c) => sum + Number(columnWidths[c.key] || 120), 0);
 
   const createProspect = async () => {
     setCreateBusy(true);
@@ -516,12 +567,23 @@ function ProspectsPage({ go }) {
           </div>
         </div>
         <div className="table-scroll">
-        <table>
+        <table style={{ minWidth: `${tableMinWidth}px` }}>
           <thead>
             <tr>
               {activeCols.map((c) => (
-                <th key={c.key} onClick={() => onSortHeader(c.key)} style={{ cursor: "pointer", userSelect: "none" }}>
-                  {c.label}{sortMark(c.key)}
+                <th
+                  key={c.key}
+                  onClick={() => onSortHeader(c.key)}
+                  style={{
+                    cursor: "pointer",
+                    userSelect: "none",
+                    width: `${columnWidths[c.key] || 120}px`,
+                    minWidth: `${columnWidths[c.key] || 120}px`,
+                    maxWidth: `${columnWidths[c.key] || 120}px`,
+                  }}
+                >
+                  <span className="th-content">{c.label}{sortMark(c.key)}</span>
+                  <span className="col-resizer" onMouseDown={(e) => startResize(c.key, e)} />
                 </th>
               ))}
             </tr>
@@ -529,7 +591,18 @@ function ProspectsPage({ go }) {
           <tbody>
             {sortedRows.map((r) => (
               <tr key={r.customer_id}>
-                {activeCols.map((c) => <td key={c.key}>{cellFor(r, c.key)}</td>)}
+                {activeCols.map((c) => (
+                  <td
+                    key={c.key}
+                    style={{
+                      width: `${columnWidths[c.key] || 120}px`,
+                      minWidth: `${columnWidths[c.key] || 120}px`,
+                      maxWidth: `${columnWidths[c.key] || 120}px`,
+                    }}
+                  >
+                    {cellFor(r, c.key)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

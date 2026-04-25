@@ -95,6 +95,26 @@ thead th{
   background:#eef3fb;
   color:#2d3f67;
   border-bottom:1px solid #dfe6f4;
+  position:relative;
+}
+.th-content{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  padding-right:14px;
+}
+.col-resizer{
+  position:absolute;
+  top:0;
+  right:0;
+  width:8px;
+  height:100%;
+  cursor:col-resize;
+  user-select:none;
+}
+.col-resizer:hover{
+  background:rgba(45,125,244,.15);
 }
 tbody td{
   padding:10px 12px;
