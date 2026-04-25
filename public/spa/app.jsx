@@ -583,7 +583,9 @@ function ProspectsPage({ go }) {
                   }}
                 >
                   <span className="th-content">{c.label}{sortMark(c.key)}</span>
-                  <span className="col-resizer" onMouseDown={(e) => startResize(c.key, e)} />
+                  <span className="col-resizer" onMouseDown={(e) => startResize(c.key, e)}>
+                    <span className="col-resizer-grip" aria-hidden="true">⋮</span>
+                  </span>
                 </th>
               ))}
             </tr>

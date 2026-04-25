@@ -107,14 +107,37 @@ thead th{
 .col-resizer{
   position:absolute;
   top:0;
-  right:0;
-  width:8px;
+  right:-6px;
+  width:14px;
   height:100%;
   cursor:col-resize;
   user-select:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2;
+}
+.col-resizer-grip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:10px;
+  height:16px;
+  border-radius:999px;
+  color:#9cb1d8;
+  font-size:12px;
+  line-height:1;
+  font-weight:700;
+  background:#eef3fb;
+  border:1px solid #d6e0f2;
 }
 .col-resizer:hover{
-  background:rgba(45,125,244,.15);
+  background:rgba(45,125,244,.12);
+}
+.col-resizer:hover .col-resizer-grip{
+  color:#2f5ea6;
+  border-color:#b9cdee;
+  background:#e6eefb;
 }
 tbody td{
   padding:10px 12px;
