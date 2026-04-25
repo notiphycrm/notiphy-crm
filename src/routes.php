@@ -20,6 +20,10 @@ function route_request(string $method, string $path): void
         json_out(['ok' => true]);
         return;
     }
+    if ($method === 'GET' && $path === 'auth/me') {
+        route_auth_me();
+        return;
+    }
     if ($method === 'GET' && $path === 'lookups/prospect-filters') {
         route_lookups();
         return;
@@ -136,6 +140,12 @@ function route_auth_login(): void
         'salesperson_privilege' => (int)($user['salesperson_privilege'] ?? 0),
     ];
     json_out(['ok' => true, 'user' => $_SESSION['user']]);
+}
+
+function route_auth_me(): void
+{
+    $user = require_auth();
+    json_out(['ok' => true, 'user' => $user]);
 }
 
 function route_lookups(): void

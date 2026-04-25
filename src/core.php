@@ -71,8 +71,55 @@ function app_env(): array
         'ai_enabled' => env('AI_ENABLED', '0') === '1',
         'openai_api_key' => env('OPENAI_API_KEY', ''),
         'openai_model' => env('OPENAI_MODEL', 'gpt-4.1-mini'),
+        // Session cookie: default 7 days so hard reloads keep you signed in. Use 0 for a session-only cookie (browser exit clears it).
+        'session_cookie_lifetime' => (int)env('SESSION_COOKIE_LIFETIME', '604800'),
+        'session_cookie_path' => env('SESSION_COOKIE_PATH', '/') ?: '/',
+        'session_cookie_samesite' => strtoupper(env('SESSION_COOKIE_SAMESITE', 'Lax') ?: 'Lax'),
     ];
     return $cfg;
+}
+
+/**
+ * Configure PHP session cookie before session_start().
+ * Without this, PHP often uses a session-only cookie (lost when the browser exits) and a path tied to /api/.
+ */
+function crm_session_bootstrap(): void
+{
+    $cfg = app_env();
+    $lifetime = (int)($cfg['session_cookie_lifetime'] ?? 604800);
+    if ($lifetime < 0) {
+        $lifetime = 604800;
+    }
+    $path = (string)($cfg['session_cookie_path'] ?? '/');
+    if ($path === '') {
+        $path = '/';
+    }
+    $sameRaw = (string)($cfg['session_cookie_samesite'] ?? 'Lax');
+    $sameUpper = strtoupper($sameRaw);
+    $sameSite = 'Lax';
+    if ($sameUpper === 'STRICT') {
+        $sameSite = 'Strict';
+    } elseif ($sameUpper === 'NONE') {
+        $sameSite = 'None';
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (string)$_SERVER['SERVER_PORT'] === '443');
+    $secure = $sameSite === 'None' ? true : $https;
+
+    $gc = $lifetime > 0 ? max(120, $lifetime) : 86400;
+    ini_set('session.gc_maxlifetime', (string)$gc);
+    if (PHP_VERSION_ID >= 70300) {
+        session_set_cookie_params([
+            'lifetime' => $lifetime,
+            'path' => $path,
+            'domain' => '',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => $sameSite,
+        ]);
+    } else {
+        session_set_cookie_params($lifetime, $path, '', $secure, true);
+    }
 }
 
 function db(): PDO

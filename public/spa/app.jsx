@@ -86,6 +86,7 @@ function App() {
   });
   const [me, setMe] = useState(null);
   const [error, setError] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const onPop = () => {
@@ -94,6 +95,22 @@ function App() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/auth/me")
+      .then((out) => {
+        if (!cancelled) setMe(out.user || null);
+      })
+      .catch(() => {
+        if (!cancelled) setMe(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const go = (to) => {
@@ -115,6 +132,17 @@ function App() {
     setMe(null);
     go("/dashboard");
   };
+
+  if (!authChecked) {
+    return (
+      <div className="container">
+        <div className="card login-wrap">
+          <h1>Loading...</h1>
+          <div className="muted">Checking your session</div>
+        </div>
+      </div>
+    );
+  }
 
   if (!me) {
     return <LoginPage onLogin={onLogin} error={error} setError={setError} />;
@@ -381,7 +409,7 @@ function ProspectsPage({ go }) {
   const onSortHeader = (key) => {
     setTableSort((s) => {
       if (s.key === key) return { key, dir: s.dir === "asc" ? "desc" : "asc" };
-      return { key, dir: "asc" };
+      return { key, dir: "desc" };
     });
   };
   const sortMark = (key) => {

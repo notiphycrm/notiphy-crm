@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../../src/core.php';
+crm_session_bootstrap();
 session_start();
 date_default_timezone_set("Europe/London");
 
